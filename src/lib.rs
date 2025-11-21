@@ -11,52 +11,35 @@ use std::io::Write;
 use std::path::PathBuf;
 use std::{env, fs, process};
 
-struct Advert {
-    url: String,
-    web_type: String,
-}
-
 struct Email {
     subject: String,
     body: String,
     recipient: String,
 }
 
-impl Advert {
-    fn get_id(&self) -> String {
-        match self.web_type.as_str() {
-            "AF" => {
-                let mut url = self.url.clone();
-                let job_id = url.split_off(51);
-                return job_id;
-            }
-            _ => panic!("ERROR: function get_id called with invalid Advert.web_type"),
-        }
-    }
+fn get_id(url: &str) -> String {
+    let job_id = url.to_owned().split_off(51);
+    return job_id;
+}
 
-    fn get_api(&self) -> String {
-        let id = self.get_id();
-        return "https://platsbanken-api.arbetsformedlingen.se/jobs/v1/job/".to_owned()
-            + id.as_str();
-    }
+fn get_api(url: &str) -> String {
+    let id = get_id(url);
+    return "https://platsbanken-api.arbetsformedlingen.se/jobs/v1/job/".to_owned() + id.as_str();
+}
 
-    fn to_json_file_name(&self) -> String {
-        let mut home = find_home();
-        home.push(".config/JobApplier/Jobs/");
-        let filename = self.get_id() + ".json";
-        home.push(filename);
+fn to_json_file_name(url: &str) -> String {
+    let mut home = find_home();
+    home.push(".config/JobApplier/Jobs/");
+    let filename = get_id(url) + ".json";
+    home.push(filename);
 
-        return home.display().to_string();
-    }
+    return home.display().to_string();
 }
 
 pub fn email_sender(url: &str) -> Option<&str> {
     let config = read_config(); //parse config file
 
-    let job_advert = Advert {
-        url: url.into(),
-        web_type: "AF".into(),
-    };
+    let job_advert = url;
 
     //download the json from AF
     match download_json(&job_advert) {
@@ -106,8 +89,8 @@ pub fn email_sender(url: &str) -> Option<&str> {
     return Some("success");
 }
 
-fn download_json(job_ad: &Advert) -> Result<()> {
-    let url = job_ad.get_api();
+fn download_json(job_ad: &str) -> Result<()> {
+    let url = get_api(job_ad);
 
     // Send GET request
     let response = get(url)?;
@@ -118,7 +101,7 @@ fn download_json(job_ad: &Advert) -> Result<()> {
     let mut file = File::options()
         .write(true)
         .create_new(true)
-        .open(job_ad.to_json_file_name())?;
+        .open(to_json_file_name(job_ad))?;
 
     file.write_all(&bytes).expect("Failed to write file");
     Ok(())
@@ -164,9 +147,9 @@ fn mail(subject: &str, body: &str, recipient: &str, config: &JsonValue) {
     }
 }
 
-fn get_json(ad: &Advert) -> JsonValue {
+fn get_json(ad: &str) -> JsonValue {
     let contents =
-        fs::read_to_string(ad.to_json_file_name()).expect("ERROR: failed to read json file");
+        fs::read_to_string(to_json_file_name(ad)).expect("ERROR: failed to read json file");
 
     let parsed: JsonValue = json::parse(&contents).expect("ERROR: failure to parse json file");
     return parsed;

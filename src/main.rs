@@ -1,4 +1,4 @@
-use applier::{email_sender, log};
+use applier::email_sender;
 use chrono::Utc;
 use clap::Parser;
 use json::JsonValue;
