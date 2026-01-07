@@ -1,4 +1,3 @@
-use crate::macros::LogLevel;
 use anyhow::Result;
 use json::JsonValue;
 use lettre::SmtpTransport;
@@ -6,122 +5,97 @@ use lettre::Transport;
 use lettre::message::{Attachment, Message, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use rand::prelude::*;
-use reqwest::blocking::get;
 use sqlx::SqlitePool;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::{env, fs, process};
-#[macro_use]
-pub mod macros;
+use tracing::debug;
+use tracing::error;
+use tracing::info;
 
+use crate::af_structs::Advert;
+pub mod af_structs;
+
+#[derive(Debug)]
 struct Email {
     subject: String,
     body: String,
     recipient: String,
 }
 
-fn get_id(url: &str) -> String {
-    let job_id = url.to_owned().split_off(51);
-    return job_id;
-}
-
-fn get_api(url: &str) -> String {
-    let id = get_id(url);
-    return "https://platsbanken-api.arbetsformedlingen.se/jobs/v1/job/".to_owned() + id.as_str();
-}
-
-fn to_json_file_name(url: &str) -> String {
+fn to_json_file_name(id: &str) -> String {
     let mut home = find_home();
     home.push(".config/JobApplier/Jobs/");
-    let filename = get_id(url) + ".json";
+    let filename = String::from(id) + ".json";
     home.push(filename);
 
     return home.display().to_string();
 }
 
-pub fn email_sender(url: &str, log_level: &LogLevel) -> Option<String> {
+pub async fn email_sender(ad: &Advert) -> Option<String> {
     let config = read_config(); //parse config file
 
-    let job_advert = url;
-    notify!("Parsing job advert", LogLevel::LOG, log_level, job_advert);
-
     //download the json from AF
-    match download_json(&job_advert) {
-        Ok(_) => println!("Saved advert as json file."),
+    match download_json(ad) {
+        Ok(_) => {
+            info!("downloaded {}", &ad.id)
+        }
         Err(_) => {
-            notify!("Email already sent.", LogLevel::ERROR, log_level);
-            let json: JsonValue = get_json(&job_advert);
-            match log(&json) {
+            info!("Email already sent. to {}", &ad.id);
+            match log(ad).await {
                 Ok(_) => (),
-                Err(r) => notify!("Logging failure", LogLevel::ERROR, log_level, r),
+                Err(r) => error!("Logging failure: {}", r),
             }
             return Some("past success".to_owned());
         }
     }
 
-    let json: JsonValue = get_json(&job_advert);
-
-    let email_recipient = match find_email(&json) {
-        Some(email) => email,
-        None => {
-            notify!(
-                "The employer did not fill any email contact, cannot automatically apply.",
-                LogLevel::ERROR,
-                log_level
-            );
-            match log(&json) {
-                Ok(_) => (),
-                Err(r) => notify!("Logging failure", LogLevel::ERROR, log_level, r),
-            }
-            return None;
-        }
-    };
-
     let pl = get_personal_letter();
+    debug!("got personal letter");
 
     //compose an email to send
     let email = Email {
         subject: String::from("Ansökan för '")
-            + json["title"].as_str().unwrap_or("Ansökan") //parses the json ad and gets the title
+            + &ad.title.clone().unwrap_or("arbete".to_string())
             + "'",
         body: pl.into(),
-        recipient: email_recipient.into(),
+        recipient: ad.email().unwrap(),
     };
 
-    mail(&email.subject, &email.body, &email.recipient, &config);
+    // info!("Email: \n{:?}", email);
+    mail(email, &config);
 
-    match log(&json) {
+    match log(ad).await {
         Ok(_) => (),
-        Err(r) => notify!("Logging failure", LogLevel::ERROR, log_level, r),
+        Err(r) => error!("Logging failure: {}", r),
     }
+
     return Some("success".to_owned());
 }
 
-fn download_json(job_ad: &str) -> Result<()> {
-    let url = get_api(job_ad);
-
-    // Send GET request
-    let response = get(url)?;
-
-    // Get the response body as bytes
-    let bytes = response.bytes()?;
+fn download_json(ad: &Advert) -> Result<()> {
+    let json = serde_json::to_string(&ad)?;
+    let bytes = json.as_bytes();
 
     let mut file = File::options()
         .write(true)
         .create_new(true)
-        .open(to_json_file_name(job_ad))?;
+        .open(to_json_file_name(&ad.id))?;
 
     file.write_all(&bytes).expect("Failed to write file");
     Ok(())
 }
 
-fn mail(subject: &str, body: &str, recipient: &str, config: &JsonValue) {
+fn mail(email: Email, config: &JsonValue) {
+    let subject = email.subject;
+    let body = email.body;
+    let recipient = email.recipient;
     // Your ProtonMail credentials
     let username = config["SMTP"]["username"].to_string();
     let password = config["SMTP"]["token"].to_string(); // Use the SMTP password from ProtonMail
 
-    println!("Sending Email to {recipient}.");
+    info!("Sending Email to {recipient}.");
 
     let file_path = config["resumePath"].to_string();
     let file_data = fs::read(&file_path).expect("Could not read file");
@@ -151,26 +125,8 @@ fn mail(subject: &str, body: &str, recipient: &str, config: &JsonValue) {
 
     // Send the email
     match mailer.send(&email) {
-        Ok(_) => println!("Email sent successfully!"),
-        Err(e) => eprintln!("Could not send email: {:?}", e),
-    }
-}
-
-fn get_json(ad: &str) -> JsonValue {
-    let contents =
-        fs::read_to_string(to_json_file_name(ad)).expect("ERROR: failed to read json file");
-
-    let parsed: JsonValue = json::parse(&contents).expect("ERROR: failure to parse json file");
-    return parsed;
-}
-
-fn find_email(json: &JsonValue) -> Option<String> {
-    if json["application"]["email"].is_string() {
-        Some(json["application"]["email"].to_string())
-    } else if json["application"]["mail"].is_string() {
-        Some(json["application"]["mail"].to_string())
-    } else {
-        None
+        Ok(_) => info!("Email sent successfully!"),
+        Err(e) => error!("Could not send email: {:?}", e),
     }
 }
 
@@ -178,7 +134,7 @@ fn read_config() -> JsonValue {
     let mut home_path = match env::home_dir() {
         Some(path) => path,
         None => {
-            println!("Failed to parse $HOME path, exiting...");
+            error!("Failed to parse $HOME path, exiting...");
             process::exit(1);
         }
     };
@@ -199,7 +155,7 @@ pub fn get_personal_letter() -> String {
     let mut home_path = match env::home_dir() {
         Some(path) => path,
         None => {
-            println!("Failed to parse $HOME path, exiting...");
+            error!("Failed to parse $HOME path, exiting...");
             process::exit(1);
         }
     };
@@ -223,7 +179,7 @@ pub fn get_personal_letter() -> String {
         please make sure that you have at least one personal letter inside of $HOME/.config/JobApplier/pl/\n",
     );
 
-    println!("{}", &letter);
+    // info!("{}", &letter);
 
     return letter;
 }
@@ -243,8 +199,7 @@ pub fn find_config() -> PathBuf {
     return home;
 }
 
-#[tokio::main]
-pub async fn log(json: &JsonValue) -> Result<(), sqlx::Error> {
+pub async fn log(ad: &Advert) -> Result<(), sqlx::Error> {
     let mut config = find_config();
     config.push("log.db");
     let log_path = format!("sqlite:file:{}?mode=rwc", config.display());
@@ -269,38 +224,34 @@ pub async fn log(json: &JsonValue) -> Result<(), sqlx::Error> {
     .execute(&database)
     .await?;
 
-    let id = match json["id"].as_str() {
-        Some(val) => val.parse::<u32>().unwrap_or(0),
-        None => 0,
-    };
-    let title = match json["title"].as_str() {
+    let title = match &ad.title {
         Some(val) => val,
-        None => "empty",
+        None => "null",
     };
-    let occupation = match json["occupation"].as_str() {
+    let occupation = match &ad.occupation {
         Some(val) => val,
-        None => "empty",
+        None => "null",
     };
-    let work_time_extent = match json["workTimeExtent"].as_str() {
+    let work_time_extent = match &ad.workTimeExtent {
         Some(val) => val,
-        None => "empty",
+        None => "null",
     };
-    let company = match json["company"]["name"].as_str() {
+    let company = match &ad.company.name {
         Some(val) => val,
-        None => "empty",
+        None => "null",
     };
-    let city = match json["workplace"]["region"].as_str() {
+    let city = match &ad.workplace.region {
         Some(val) => val,
-        None => "empty",
+        None => "null",
     };
-    let email = find_email(&json).unwrap_or("none".to_string());
+    let email = ad.email().unwrap();
 
     sqlx::query(
         "INSERT INTO log (id, title, occupation, workTimeExtent, company, city, email)
         VALUES (?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(id) DO NOTHING;",
     )
-    .bind(id)
+    .bind(&ad.id)
     .bind(title)
     .bind(occupation)
     .bind(work_time_extent)

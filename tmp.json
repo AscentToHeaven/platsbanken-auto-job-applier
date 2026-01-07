@@ -1,0 +1,100 @@
+{
+  "id": "30440998",
+  "title": "Nu söker Hit & Dit en nya CE chaufför till vårt team.",
+  "description": "<p><strong>Jönköping, se hit!</strong></p><p><strong>Hit & Dit Transport i Jönköping söker en CE chaufför</strong></p><p><strong>Är detta ditt nya jobb?</strong></p><p><strong> </strong></p><p><strong>Är du intresserad utav att arbeta som CE chaufför och är bosatt i Jönköping med omnejd? Då kan detta vara jobbet för dig!</strong></p><p><strong>Tjänsten är deltid 87,5% </strong></p><p>Tjänsten är måndag – fredag.</p><p><strong>Start: 04:45. </strong></p><p><strong>Slut: 12:30. </strong></p><p><strong>Rast 45 min. = 7 timmar om dagen.</strong></p><p><strong>Körningen utgår och avslutas på Hit & Dit Transport i Jönköping.</strong></p><p><strong>Det är körning med lastbil & släp. 1 lastning i Jönköping, 1 lossning i Skövde, 2 lossningar i Mariestad sen hem till Jönköping.</strong></p><p>Mer information ges såklart om du blir kallad till en intervju.</p><p><strong>Du som person har:</strong></p><ul><li>CE körkort</li><li>YKB</li><li>God förståelse för svenska och engelska i tal och skrift</li><li>Rent belastningsregister</li><li>Hög servicenivå</li><li>Bil & Släp körvana (Meriterande)</li><li>ADR (Meriterande)</li><li><br></li></ul><p><strong>Vi erbjuder dig:</strong> Som anställd hos oss på Hit & Dit erbjuder vi dig en trygg anställning med kollektivavtal och ett närvarande engagemang. </p><p><strong>Våra värderingar</strong> är personlig relation, kvalité och långsiktighet i det vi gör varje dag. Vi är ett kunskapsdrivet team som har över 30 års erfarenhet från branschen. Vårt arbete kännetecknas av kvalitet, nytänkande och ett personligt engagemang.</p><p><strong>Varaktighet: </strong>Vi tillämpar 6 månaders provanställning.</p><p><strong>Startdatum: </strong>start efter överenskommelse<strong>.</strong></p><p><strong>Ansökan</strong>: Vi hanterar ansökningar löpande och tar därmed gärna emot din ansökan så snart som möjligt. </p><p>Maila: <a href=\"mailto:info@hitochdit.eu\">info@hitochdit.eu</a>  (Märk mailet med CE Chaufför)</p><p><strong>Sista ansökningsdag fredag 23/1-2026</strong></p>",
+  "publishedDate": "2026-01-07T13:22:55Z",
+  "occupation": "Fjärrbilsförare",
+  "company": {
+    "name": "Hit & Dit Transport i Jönköping AB",
+    "streetAddress": null,
+    "postCode": null,
+    "city": null,
+    "phoneNumber": null,
+    "webAddress": "https://www.hitochdit.eu/",
+    "email": null,
+    "organisationNumber": "5565785986"
+  },
+  "logotype": "https://www.arbetsformedlingen.se/rest/agas/api/v1/arbetsplatser/83511070/logotyper/logo.png",
+  "conditions": null,
+  "salaryDescription": null,
+  "salaryType": "Fast månads- vecko- eller timlön",
+  "workTimeExtent": "Deltid",
+  "employmentType": "Tillsvidare- eller tidsbegränsad anställning",
+  "duration": "Tillsvidare",
+  "lastApplicationDate": "2026-01-23T22:59:59Z",
+  "expirationDate": null,
+  "positions": 1,
+  "published": true,
+  "ownCar": false,
+  "requiresExperience": true,
+  "education": {
+    "name": "",
+    "required": null,
+    "level": null
+  },
+  "application": {
+    "mail": null,
+    "email": "info@hitochdit.eu",
+    "webAddress": "",
+    "other": null,
+    "reference": "CE Chaufför",
+    "information": null
+  },
+  "workplace": {
+    "name": "HIT OCH DIT TRANSPORT I JÖNKÖPING AB",
+    "street": "INSTRUMENTVÄGEN 5",
+    "postCode": "55302",
+    "city": "Jönköping",
+    "unspecifiedWorkplace": false,
+    "region": "Jönköpings län",
+    "country": "Sverige",
+    "municipality": "Jönköping",
+    "longitude": "14.1628299492418",
+    "latitude": "57.7521465482997",
+    "showMap": true
+  },
+  "drivingLicense": [
+    "CE"
+  ],
+  "skills": [
+    {
+      "name": "Yrkeskompetensbevis YKB, tung lastbil",
+      "required": true,
+      "level": null
+    },
+    {
+      "name": "ADR, styckegods (grundkurs)",
+      "required": false,
+      "level": null
+    },
+    {
+      "name": "ADR 1.3",
+      "required": false,
+      "level": null
+    }
+  ],
+  "languages": [
+    {
+      "name": "Svenska",
+      "required": true,
+      "level": null
+    },
+    {
+      "name": "Engelska",
+      "required": true,
+      "level": null
+    }
+  ],
+  "workExperiences": [
+    {
+      "name": "Fjärrbilsförare",
+      "required": false,
+      "level": {
+        "id": "yrAe_Fzi_E6u",
+        "name": "Mindre än 1 års erfarenhet"
+      }
+    }
+  ],
+  "contacts": [],
+  "keywords": []
+}
