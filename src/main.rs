@@ -1,12 +1,18 @@
 use applier::{
     af_structs::{self, Ad, Advert},
-    email_sender,
+    email_sender, find_home,
 };
 use chrono::Utc;
 use clap::Parser;
 use reqwest::Client;
 use serde_json::json;
-use std::process;
+use std::io::Write;
+use std::{
+    collections::HashSet,
+    error,
+    io::{BufRead, BufReader, BufWriter},
+    process,
+};
 use tracing::{Level, debug, error, info};
 
 #[derive(Parser, Debug)]
@@ -61,8 +67,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 async fn fetch_ads(list: &Vec<Ad>) -> Result<Vec<Advert>, Box<dyn std::error::Error>> {
-    let client = Client::new();
+    let mut history: HashSet<String> = load_history()?;
+    let list = list
+        .into_iter()
+        .filter(|ad| {
+            debug!("filtered {}", ad.id.clone());
+            history.insert(ad.id.clone())
+        })
+        .collect::<Vec<&Ad>>();
+    save_history(history)?;
 
+    let client = Client::new();
     let mut adverts: Vec<Advert> = Vec::new();
     for a in list {
         let res = client
@@ -84,6 +99,34 @@ async fn fetch_ads(list: &Vec<Ad>) -> Result<Vec<Advert>, Box<dyn std::error::Er
     }
 
     return Ok(adverts);
+}
+
+fn load_history() -> Result<HashSet<String>, Box<dyn error::Error>> {
+    let mut home = find_home();
+    home.push(".config/JobApplier/hist.r");
+
+    if !home.exists() {
+        return Ok(HashSet::new());
+    }
+
+    let file = std::fs::File::open(home)?;
+    let reader = BufReader::new(file);
+
+    Ok(reader.lines().filter_map(Result::ok).collect())
+}
+
+fn save_history(history: HashSet<String>) -> Result<(), Box<dyn error::Error>> {
+    let mut home = find_home();
+    home.push(".config/JobApplier/hist.r");
+
+    let file = std::fs::File::create(home)?;
+    let mut writer = BufWriter::new(file);
+
+    for id in history {
+        writeln!(writer, "{id}")?
+    }
+
+    Ok(())
 }
 
 async fn web_push_to_text(body: String) -> Result<af_structs::Search, Box<dyn std::error::Error>> {

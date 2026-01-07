@@ -42,7 +42,10 @@ pub async fn email_sender(ad: &Advert) -> Option<String> {
             info!("downloaded {}", &ad.id)
         }
         Err(_) => {
-            info!("Email already sent. to {}", &ad.id);
+            info!(
+                "Email already sent. to {}: This should be reduntant as of 0.1.1",
+                &ad.id
+            );
             match log(ad).await {
                 Ok(_) => (),
                 Err(r) => error!("Logging failure: {}", r),
@@ -184,7 +187,7 @@ pub fn get_personal_letter() -> String {
     return letter;
 }
 
-fn find_home() -> PathBuf {
+pub fn find_home() -> PathBuf {
     if let Some(path) = env::home_dir() {
         return path;
     } else {
