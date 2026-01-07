@@ -1,15 +1,19 @@
+use crate::macros::LogLevel;
 use anyhow::Result;
 use json::JsonValue;
 use lettre::SmtpTransport;
 use lettre::Transport;
 use lettre::message::{Attachment, Message, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
+use rand::prelude::*;
 use reqwest::blocking::get;
 use sqlx::SqlitePool;
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
 use std::{env, fs, process};
+#[macro_use]
+pub mod macros;
 
 struct Email {
     subject: String,
@@ -36,22 +40,23 @@ fn to_json_file_name(url: &str) -> String {
     return home.display().to_string();
 }
 
-pub fn email_sender(url: &str) -> Option<&str> {
+pub fn email_sender(url: &str, log_level: &LogLevel) -> Option<String> {
     let config = read_config(); //parse config file
 
     let job_advert = url;
+    notify!("Parsing job advert", LogLevel::LOG, log_level, job_advert);
 
     //download the json from AF
     match download_json(&job_advert) {
         Ok(_) => println!("Saved advert as json file."),
         Err(_) => {
-            println!("Email already sent.");
+            notify!("Email already sent.", LogLevel::ERROR, log_level);
             let json: JsonValue = get_json(&job_advert);
             match log(&json) {
                 Ok(_) => (),
-                Err(r) => println!("logging error: {r}"),
+                Err(r) => notify!("Logging failure", LogLevel::ERROR, log_level, r),
             }
-            return Some("past success");
+            return Some("past success".to_owned());
         }
     }
 
@@ -60,10 +65,14 @@ pub fn email_sender(url: &str) -> Option<&str> {
     let email_recipient = match find_email(&json) {
         Some(email) => email,
         None => {
-            println!("The employer did not fill any email contact, cannot automatically apply.");
+            notify!(
+                "The employer did not fill any email contact, cannot automatically apply.",
+                LogLevel::ERROR,
+                log_level
+            );
             match log(&json) {
                 Ok(_) => (),
-                Err(r) => println!("logging error: {r}"),
+                Err(r) => notify!("Logging failure", LogLevel::ERROR, log_level, r),
             }
             return None;
         }
@@ -84,9 +93,9 @@ pub fn email_sender(url: &str) -> Option<&str> {
 
     match log(&json) {
         Ok(_) => (),
-        Err(r) => println!("logging error: {r}"),
+        Err(r) => notify!("Logging failure", LogLevel::ERROR, log_level, r),
     }
-    return Some("success");
+    return Some("success".to_owned());
 }
 
 fn download_json(job_ad: &str) -> Result<()> {
@@ -186,7 +195,7 @@ fn read_config() -> JsonValue {
     json::parse(&contents).expect("ERROR: json failed to parse file.")
 }
 
-fn get_personal_letter() -> String {
+pub fn get_personal_letter() -> String {
     let mut home_path = match env::home_dir() {
         Some(path) => path,
         None => {
@@ -195,14 +204,28 @@ fn get_personal_letter() -> String {
         }
     };
 
-    home_path.push(".config/JobApplier/personal_letter.txt");
+    home_path.push(".config/JobApplier/pl/");
 
-    return fs::read_to_string(home_path.to_str().unwrap()).expect(
+    let p_letters: Vec<PathBuf> = fs::read_dir(home_path)
+        .unwrap()
+        .filter_map(|f| match f {
+            Ok(file) => Some(file.path()),
+            Err(_) => None,
+        })
+        .collect();
+
+    let mut rng = rand::rng();
+    let rand = rng.random_range(0..p_letters.len());
+
+    let letter = fs::read_to_string(p_letters[rand].clone()).expect(
         "
-        ERROR: failed to parse personal letter file.
-        Please make sure you have a config file ($HOME/.config/JobApplier/personal_letter.txt)
-        refer to the documentation for how to format the file\n",
+        ERROR: failed to find a personal letter.
+        please make sure that you have at least one personal letter inside of $HOME/.config/JobApplier/pl/\n",
     );
+
+    println!("{}", &letter);
+
+    return letter;
 }
 
 fn find_home() -> PathBuf {

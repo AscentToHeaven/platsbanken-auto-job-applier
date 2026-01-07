@@ -1,4 +1,4 @@
-use applier::email_sender;
+use applier::{email_sender, macros::LogLevel};
 use chrono::Utc;
 use clap::Parser;
 use json::JsonValue;
@@ -14,10 +14,24 @@ struct Args {
 
     #[arg(short, long, default_value = "servering")]
     search: String,
+
+    #[arg(short, long, default_value = "WARN")]
+    log_level: String,
 }
 
 fn main() {
     let arguments = Args::parse();
+
+    let log_level = match arguments.log_level.as_str() {
+        "ERROR" => LogLevel::ERROR,
+        "WARN" => LogLevel::WARN,
+        "LOG" => LogLevel::LOG,
+        "DEBUG" => LogLevel::DEBUG,
+        _ => {
+            eprintln!("BAD OPTION: log level. Please pick ERROR, WARN, LOG, or DEBUG");
+            std::process::exit(1)
+        }
+    };
 
     let body = build_body(arguments);
 
@@ -29,7 +43,7 @@ fn main() {
 
     for i in 0..urls.len() {
         println!("\nProcessing {}.", &urls[i]);
-        email_sender(&urls[i]);
+        email_sender(&urls[i], &log_level);
     }
 }
 
@@ -54,11 +68,22 @@ fn text_to_json(text: String) -> JsonValue {
 fn get_list(json: &JsonValue) -> Vec<String> {
     let mut list: Vec<String> = Vec::new();
 
-    let ad_count = json["numberOfAds"].as_usize();
+    let ad_count = json["numberOfAds"].as_usize().unwrap();
+    println!("{ad_count}");
 
-    for item in 0..ad_count.unwrap() {
-        let id = &json["ads"][item]["id"].as_str().unwrap();
-        list.push(id.to_string());
+    if ad_count == 0 {
+        println!("No jobs match the criteria.");
+        process::exit(0);
+    }
+
+    for item in 0..ad_count {
+        let json_value = &json["ads"];
+        // println!("json_value.1.id: {:?}", json_value[item]["id"]);
+        match &json_value[item]["id"].as_str() {
+            Some(r) => list.push(r.to_string()),
+            None => {}
+        };
+        // list.push(id.to_string());
     }
 
     return list;
